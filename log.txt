@@ -1,0 +1,11 @@
+2019-12-29 17:10:17,765 [20]: InfluxDB Connected: http://workstation.local:8086.
+2019-12-29 17:10:17,765 [20]: File watchdog started monitoring C:\Documents and Settings\Admin\Desktop\Experiment\InfluxExperiments with polling timeout 1.0 seconds.
+2019-12-29 17:10:20,796 [20]: File created: C:\Documents and Settings\Admin\Desktop\Experiment\InfluxExperiments\Experiment 2019-12-29 16-57\2019-12-29 17-10-19 _Spectrum.csv
+2019-12-29 17:10:20,796 [10]: [{'fields': {}, 'tags': {'experiment': 'Experiment 2019-12-29 16-57'}, 'time': '2019-12-29T17:10:20.796000', 'measurement': 'raman'}]
+2019-12-29 17:12:22,092 [20]: InfluxDB Connected: http://workstation.local:8086.
+2019-12-29 17:12:22,108 [20]: File watchdog started monitoring C:\Documents and Settings\Admin\Desktop\Experiment\InfluxExperiments with polling timeout 1.0 seconds.
+2019-12-29 17:12:35,328 [20]: File created: C:\Documents and Settings\Admin\Desktop\Experiment\InfluxExperiments\Experiment 2019-12-29 16-57\2019-12-29 17-12-34 _Spectrum.csv
+2019-12-29 17:14:50,328 [INFO]: InfluxDB Connected: http://workstation.local:8086.
+2019-12-29 17:14:50,358 [INFO]: File watchdog started monitoring C:\Documents and Settings\Admin\Desktop\Experiment\InfluxExperiments with polling timeout 1.0 seconds.
+2019-12-29 17:15:07,687 [INFO]: File created: C:\Documents and Settings\Admin\Desktop\Experiment\InfluxExperiments\Experiment 2019-12-29 16-57\2019-12-29 17-15-06 _Spectrum.csv
+2019-12-29 17:15:07,703 [DEBUG]: [{'fields': {}, 'tags': {'experiment': 'Experiment 2019-12-29 16-57'}, 'time': '2019-12-29T17:15:07.703000', 'measurement': 'raman'}]
