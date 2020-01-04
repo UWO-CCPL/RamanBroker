@@ -1,4 +1,7 @@
 import datetime
+import json
+import struct
+
 import pytz
 from dateutil.tz import tzlocal
 import logging
@@ -12,6 +15,7 @@ from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 import influxdb
 import re
+from paho.mqtt.client import Client
 
 TIMESTAMP_EXTRACTOR = re.compile(r"\\([0-9\- ]*) _Spectrum.csv")
 
@@ -22,19 +26,30 @@ class RamanBrokerNewDataFileHandler(FileSystemEventHandler):
 
         :type config: ConfigParser
         """
+        self.wave_number_transmitted = False
         self.config = config
         self.logger = logging.getLogger("RamanBroker")
 
-        host = config.get("influxdb", "host")
-        port = config.getint("influxdb", "port")
-        username = config.get("influxdb", "username")
-        password = config.get("influxdb", "password")
-        database = config.get("influxdb", "database")
-        self.measurement = config.get("influxdb", "measurement")
-        self.monitor_directory = config.get("raman", "monitor_directory")
+        self.influxdb_enabled = config.getboolean("influxdb", "enabled")
+        if self.influxdb_enabled:
+            host = config.get("influxdb", "host")
+            port = config.getint("influxdb", "port")
+            username = config.get("influxdb", "username")
+            password = config.get("influxdb", "password")
+            database = config.get("influxdb", "database")
+            self.measurement = config.get("influxdb", "measurement")
+            self.monitor_directory = config.get("raman", "monitor_directory")
+            self.influx_client = influxdb.InfluxDBClient(host, port, username, password, database)
+            self.logger.info("InfluxDB Connected: http://{}:{}.".format(host, port))
 
-        self.client = influxdb.InfluxDBClient(host, port, username, password, database)
-        self.logger.info("InfluxDB Connected: http://{}:{}.".format(host, port))
+        self.mqtt_enabled = config.getboolean("mqtt", "enabled")
+        if self.mqtt_enabled:
+            mqtt_id = config.getboolean("mqtt", "id")
+            mqtt_host = config.getboolean("mqtt", "host")
+            mqtt_port = config.getboolean("mqtt", "port")
+            self.mqtt_client = Client(mqtt_id)
+            self.mqtt_client.connect(mqtt_host, mqtt_port)
+            self.logger.info("MQTT Connected: tcp://{}:{}.".format(mqtt_host, mqtt_port))
 
     def on_created(self, event):
         """
@@ -65,6 +80,8 @@ class RamanBrokerNewDataFileHandler(FileSystemEventHandler):
             return
 
         fields = {}
+        wave_numbers = []
+        counts = []
         with open(path, 'r') as f:
             reader = csv.reader(f)
             for line in reader:
@@ -72,18 +89,35 @@ class RamanBrokerNewDataFileHandler(FileSystemEventHandler):
                     wave_number = line[0]
                     count = line[1]
                     fields[str(wave_number)] = count
+                    wave_numbers.append(wave_number)
+                    counts.append(count)
                 except:
                     break
 
-        experiment = self.get_experiment(path)
-        json_body = [{
-            "measurement": self.measurement,
-            "tags": dict([("experiment", experiment)]) if experiment is not None else {},
-            "time": timestamp.isoformat(),
-            "fields": fields
-        }]
-        self.client.write_points(json_body)
-        self.logger.info("Point written to InfluxDB")
+        if self.influxdb_enabled:
+            experiment = self.get_experiment(path)
+            json_body = [{
+                "measurement": self.measurement,
+                "tags": dict([("experiment", experiment)]) if experiment is not None else {},
+                "time": timestamp.isoformat(),
+                "fields": fields
+            }]
+            self.influx_client.write_points(json_body)
+            self.logger.info("Point written to InfluxDB")
+
+        if self.mqtt_enabled:
+            topic = self.config.get("mqtt", "topic")
+            counts_topic = os.path.join(topic, "count")
+
+            payload = json.dumps(counts)
+            self.mqtt_client.publish(counts_topic, payload, qos=0)
+            self.logger.info("Points written to MQTT")
+            if not self.wave_number_transmitted:
+                wave_number_topic = os.path.join(topic, "wave_number")
+                wave_number_payload = json.dumps(wave_numbers)
+                self.mqtt_client.publish(wave_number_topic, wave_number_payload, qos=2, retain=True)
+                self.wave_number_transmitted = True
+                self.logger.info("Wave number has been written to {}".format(wave_number_topic))
 
     def filter_target(self, filename):
         """
@@ -135,6 +169,6 @@ class RamanBroker(threading.Thread):
             self.logger.error(ex.message)
 
         try:
-            self.event_handler.client.close()
+            self.event_handler.influx_client.close()
         except Exception as ex:
             self.logger.error(ex.message)
