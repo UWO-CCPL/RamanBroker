@@ -44,9 +44,9 @@ class RamanBrokerNewDataFileHandler(FileSystemEventHandler):
 
         self.mqtt_enabled = config.getboolean("mqtt", "enabled")
         if self.mqtt_enabled:
-            mqtt_id = config.getboolean("mqtt", "id")
-            mqtt_host = config.getboolean("mqtt", "host")
-            mqtt_port = config.getboolean("mqtt", "port")
+            mqtt_id = config.get("mqtt", "id")
+            mqtt_host = config.get("mqtt", "host")
+            mqtt_port = config.getint("mqtt", "port")
             self.mqtt_client = Client(mqtt_id)
             self.mqtt_client.connect(mqtt_host, mqtt_port)
             self.logger.info("MQTT Connected: tcp://{}:{}.".format(mqtt_host, mqtt_port))
@@ -89,8 +89,8 @@ class RamanBrokerNewDataFileHandler(FileSystemEventHandler):
                     wave_number = line[0]
                     count = line[1]
                     fields[str(wave_number)] = count
-                    wave_numbers.append(wave_number)
-                    counts.append(count)
+                    wave_numbers.append(float(wave_number))
+                    counts.append(float(count))
                 except:
                     break
 
@@ -107,15 +107,15 @@ class RamanBrokerNewDataFileHandler(FileSystemEventHandler):
 
         if self.mqtt_enabled:
             topic = self.config.get("mqtt", "topic")
-            counts_topic = os.path.join(topic, "count")
+            counts_topic = wave_number_topic = topic + "/count"
 
             payload = json.dumps(counts)
             self.mqtt_client.publish(counts_topic, payload, qos=0)
             self.logger.info("Points written to MQTT")
             if not self.wave_number_transmitted:
-                wave_number_topic = os.path.join(topic, "wave_number")
+                wave_number_topic = topic + "/wave_number"
                 wave_number_payload = json.dumps(wave_numbers)
-                self.mqtt_client.publish(wave_number_topic, wave_number_payload, qos=2, retain=True)
+                self.mqtt_client.publish(wave_number_topic, wave_number_payload, retain=True)
                 self.wave_number_transmitted = True
                 self.logger.info("Wave number has been written to {}".format(wave_number_topic))
 
